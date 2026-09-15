@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual-Channel IoT Dashboard - 091</title>
+    <!-- โหลดฟอนต์สไตล์อวกาศ/Sci-Fi -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #050b14;
+            --card-glass: rgba(13, 22, 38, 0.5);
+            --border-glass: rgba(0, 242, 254, 0.2);
+            --cyan: #00f2fe;
+            --cyan-glow: rgba(0, 242, 254, 0.5);
+            --green: #00ffcc;
+            --green-glow: rgba(0, 255, 204, 0.7);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none; /* ป้องกันการคลุมดำเท็กซ์แล้วดูไม่สวย */
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            /* พื้นหลังไล่สีสวยงาม */
+            background: radial-gradient(circle at 50% -20%, #1a365d 0%, var(--bg-dark) 80%);
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 900;
+            margin: 0 0 15px 0;
+            /* ไล่สีตัวหนังสือและทำเงาเรืองแสง */
+            background: linear-gradient(to right, #00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 242, 254, 0.4));
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        .id-badge {
+            font-family: 'Orbitron', sans-serif;
+            color: #bae6fd;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            background: rgba(0, 242, 254, 0.1);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(0, 242, 254, 0.3);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+            text-align: center;
+        }
+
+        #disp-source {
+            font-size: 1rem;
+            color: #94a3b8;
+            margin-bottom: 40px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(5px);
+            letter-spacing: 1px;
+        }
+        #disp-source span { color: #38bdf8; }
+
+        /* CSS Grid วาง 2 คอลัมน์ */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 40px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        /* การ์ดแบบ Glassmorphism สไตล์พรีเมียม */
+        .widget-card {
+            background: var(--card-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            padding: 35px 20px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .widget-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 242, 254, 0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+            border-color: rgba(0, 242, 254, 0.5);
+        }
+
+        /* เอฟเฟกต์เรืองแสงแดงเมื่อค่าใกล้เต็มถัง (>85%) */
+        .widget-card.redline-glow {
+            border-color: rgba(239, 68, 68, 0.6);
+            box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .widget-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            color: #bae6fd;
+            margin-bottom: 30px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .value-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-top: 30px;
+            margin-bottom: 0;
+            text-shadow: 0 0 15px var(--cyan-glow);
+        }
+
+        /* ---- Liquid Level Tank (ซ้าย) ---- */
+        #liquid-tank {
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6));
+            transform: scale(1.05);
+        }
+        #water-fill { transition: none; } /* ไม่มี transition delay ต้องขยับแบบ real-time ทันที */
+
+        /* ---- Retro 7-Segment (ขวา) ---- */
+        #seven-seg-board {
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6));
+            transform: scale(1.05);
+        }
+        .seg { fill: #0f172a; opacity: 0.4; transition: opacity 0.08s ease, fill 0.08s ease; }
+        .seg.active { fill: var(--green); opacity: 1; filter: drop-shadow(0 0 10px var(--green-glow)); }
+    </style>
+</head>
+<body>
+    <h1>DUAL-CHANNEL COMMAND CENTER</h1>
+
+    <!-- ป้ายแสดงรหัสนักศึกษาและผลคำนวณเกจ์ (สำหรับส่งงานอาจารย์) -->
+    <div class="id-badge">
+        👨‍💻 ID <strong>...091</strong> &nbsp;|&nbsp; Left <strong>4</strong> (Liquid Tank) &nbsp;|&nbsp; Right <strong>3</strong> (7-Segment)
+    </div>
+
+    <div id="disp-source">📡 Waiting for Telemetry...</div>
+
+    <div class="dashboard-grid">
+        <!-- การ์ดฝั่งซ้าย: Liquid Level Tank (CH-A) -->
+        <div class="widget-card" id="card-left">
+            <div class="widget-title">CH-A Liquid Tank Level</div>
+            <div id="container-left">
+                <svg width="220" height="220" viewBox="0 0 220 220" id="liquid-tank">
+                    <defs>
+                        <linearGradient id="water-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#00f2fe" stop-opacity="0.95"/>
+                            <stop offset="100%" stop-color="#4facfe" stop-opacity="0.8"/>
+                        </linearGradient>
+                        <clipPath id="tank-shape">
+                            <rect x="60" y="25" width="80" height="135" rx="18"/>
+                        </clipPath>
+                    </defs>
+                    <rect x="60" y="25" width="80" height="135" rx="18" fill="#07101e" stroke="#1e293b" stroke-width="2"/>
+                    <g clip-path="url(#tank-shape)">
+                        <rect id="water-fill" x="60" y="160" width="80" height="0" fill="url(#water-grad)" filter="drop-shadow(0 0 8px #00f2fe)"/>
+                    </g>
+                    <rect x="60" y="25" width="80" height="135" rx="18" fill="none" stroke="#38bdf8" stroke-width="3" opacity="0.6"/>
+                    <rect x="66" y="32" width="6" height="120" rx="3" fill="#ffffff" opacity="0.15"/>
+                    <!-- ขีดสเกล -->
+                    <line x1="145" y1="25" x2="155" y2="25" stroke="#94a3b8" stroke-width="2"/>
+                    <text x="162" y="29" fill="#94a3b8" font-size="11" font-family="sans-serif">100%</text>
+                    <line x1="145" y1="59" x2="151" y2="59" stroke="#64748b" stroke-width="1.5"/>
+                    <text x="162" y="63" fill="#64748b" font-size="10" font-family="sans-serif">75%</text>
+                    <line x1="145" y1="92" x2="155" y2="92" stroke="#94a3b8" stroke-width="2"/>
+                    <text x="162" y="96" fill="#94a3b8" font-size="11" font-family="sans-serif">50%</text>
+                    <line x1="145" y1="126" x2="151" y2="126" stroke="#64748b" stroke-width="1.5"/>
+                    <text x="162" y="130" fill="#64748b" font-size="10" font-family="sans-serif">25%</text>
+                    <line x1="145" y1="160" x2="155" y2="160" stroke="#94a3b8" stroke-width="2"/>
+                    <text x="162" y="164" fill="#94a3b8" font-size="11" font-family="sans-serif">0%</text>
+                    <text id="tank-val" x="100" y="195" text-anchor="middle" fill="#00f2fe" font-family="'Orbitron', sans-serif" font-size="22" font-weight="bold">0.0%</text>
+                    <text x="100" y="212" text-anchor="middle" fill="#64748b" font-family="'Inter', sans-serif" font-size="10" letter-spacing="1px">TANK LEVEL</text>
+                </svg>
+            </div>
+            <p id="val-left" class="value-text">0.0%</p>
+        </div>
+
+        <!-- การ์ดฝั่งขวา: Retro 7-Segment (CH-B) -->
+        <div class="widget-card" id="card-right">
+            <div class="widget-title">CH-B Retro 7-Segment</div>
+            <div id="container-right">
+                <svg width="230" height="130" viewBox="0 0 230 130" id="seven-seg-board">
+                    <rect x="5" y="5" width="220" height="120" rx="12" fill="#0b0f19" stroke="#1e293b" stroke-width="2"/>
+                    <g id="digit-tens" transform="translate(25, 15)"></g>
+                    <g id="digit-units" transform="translate(100, 15)"></g>
+                    <text x="175" y="90" fill="#00ffcc" font-family="'Orbitron', sans-serif" font-size="28" font-weight="bold" opacity="0.85" filter="drop-shadow(0 0 5px rgba(0,255,204,0.5))">%</text>
+                </svg>
+            </div>
+            <p id="val-right" class="value-text">0.0%</p>
+        </div>
+    </div>
+
+    <script>
+        // ================= 7-Segment builder (สไตล์ polygon เฉียงมุมแบบเรโทร) =================
+        const SEG_POLYGONS = {
+            a: "14,12 19,7 41,7 46,12 41,17 19,17",
+            b: "48,14 53,19 53,41 48,46 43,41 43,19",
+            c: "48,54 53,59 53,81 48,86 43,81 43,59",
+            d: "14,88 19,83 41,83 46,88 41,93 19,93",
+            e: "12,54 17,59 17,81 12,86 7,81 7,59",
+            f: "12,14 17,19 17,41 12,46 7,41 7,19",
+            g: "14,50 19,45 41,45 46,50 41,55 19,55"
+        };
+        const DIGIT_MAP = {
+            0: 'abcdef',  1: 'bc',      2: 'abged',  3: 'abgcd',
+            4: 'fgbc',    5: 'afgcd',   6: 'afgecd', 7: 'abc',
+            8: 'abcdefg', 9: 'abcdfg'
+        };
+
+        function buildDigit(groupEl, prefix) {
+            groupEl.innerHTML = '';
+            for (const key in SEG_POLYGONS) {
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                poly.setAttribute('points', SEG_POLYGONS[key]);
+                poly.classList.add('seg');
+                poly.id = `${prefix}-${key}`;
+                groupEl.appendChild(poly);
+            }
+        }
+
+        function setDigit(prefix, num) {
+            const lit = DIGIT_MAP[num] || '';
+            for (const key of Object.keys(SEG_POLYGONS)) {
+                const el = document.getElementById(`${prefix}-${key}`);
+                el.classList.toggle('active', lit.includes(key));
+            }
+        }
+
+        const tensGroup = document.getElementById('digit-tens');
+        const unitsGroup = document.getElementById('digit-units');
+        buildDigit(tensGroup, 'tens');
+        buildDigit(unitsGroup, 'units');
+
+        // ================= Liquid Tank references =================
+        const waterFill = document.getElementById('water-fill');
+        const tankValText = document.getElementById('tank-val');
+        const TANK_MAX_HEIGHT = 135; // ความสูงเต็มถัง (px ใน viewBox)
+        const TANK_BOTTOM_Y = 160;   // ตำแหน่ง y ของก้นถัง
+
+        // ================= Widget update functions =================
+
+        // ฝั่งซ้าย: Liquid Level Tank (Channel A) -- ต่อจาก Potentiometer ฮาร์ดแวร์จริง
+        // ไม่มีการ smooth/easing ใดๆ: ระดับน้ำถูกตั้งค่าตรงตามค่าที่อ่านได้ทันทีทุกครั้ง เพื่อความ real-time สูงสุด
+        function updateLeftWidget(percent) {
+            // 👇 กลับทิศทาง: ค่า raw ของ Potentiometer วิ่งสวนทางกับที่มือหมุนจริง
+            // จึงต้อง invert (100 - percent) ก่อนคำนวณระดับน้ำ/แสดงตัวเลข
+            const p = 100 - Math.max(0, Math.min(100, percent));
+
+            const fillHeight = (p / 100.0) * TANK_MAX_HEIGHT;
+            const fillY = TANK_BOTTOM_Y - fillHeight;
+            waterFill.setAttribute('height', fillHeight);
+            waterFill.setAttribute('y', fillY);
+
+            tankValText.textContent = p.toFixed(1) + '%';
+            document.getElementById('val-left').textContent = p.toFixed(1) + '%';
+
+            // เอฟเฟกต์เรืองแสงแดงเมื่อระดับน้ำใกล้เต็มถัง (>85%)
+            const card = document.getElementById('card-left');
+            card.classList.toggle('redline-glow', p >= 85);
+        }
+
+        // ฝั่งขวา: 7-Segment (Channel B) -- smooth ด้วย Exponential Moving Average กันเลขกระตุก
+        let smoothedB = null;
+        function updateRightWidget(percent) {
+            smoothedB = (smoothedB === null) ? percent : smoothedB * 0.85 + percent * 0.15;
+            const p = Math.max(0, Math.min(99, Math.round(smoothedB)));
+            const tens = Math.floor(p / 10);
+            const units = p % 10;
+            setDigit('tens', tens);
+            setDigit('units', units);
+            document.getElementById('val-right').textContent = smoothedB.toFixed(1) + '%';
+        }
+
+        // ================= Polling =================
+        async function pollTelemetry() {
+            try {
+                const res = await fetch('/api/telemetry');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                document.getElementById('disp-source').innerHTML =
+                    `📡 <b>Data Source:</b> <span>${data.dataSource}</span>`;
+
+                updateLeftWidget(data.channelA.percentage);
+                updateRightWidget(data.channelB.percentage);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        setInterval(pollTelemetry, 50);
+        pollTelemetry();
+    </script>
+</body>
+</html>

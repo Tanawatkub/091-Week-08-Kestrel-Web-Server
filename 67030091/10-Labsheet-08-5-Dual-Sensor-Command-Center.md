@@ -356,13 +356,130 @@ public class DualSerialBridgeWorker : BackgroundService
    * ถ่ายให้เห็น **รหัสนักศึกษา** และผลการคำนวณคู่เกจ์
    * นิ้วมือหมุน Potentiometer บนบอร์ด ESP32 จริง แล้วเกจ์ฝั่งซ้ายกวาดตามมืออย่างชัดเจน
    * เกจ์ฝั่งขวาขยับตามข้อมูลช่อง B (Simulation หรือ เซนเซอร์ตัวที่ 2)
+   - Link 
+    https://youtube.com/shorts/qwLqCvaElls?feature=share
+
+
 2. **รายงาน (markdown/pull request) สรุปผลการทดลอง**
    * ระบุเลขรหัสนักศึกษาและแสดงวิธีคำนวณหาเกจ์ซ้าย-ขวา
    * ภาพหน้าจอแดชบอร์ดที่ทำงานสมบูรณ์
    * อธิบายหลักการทำงานของฟังก์ชัน JavaScript ในการเชื่อมต่อข้อมูล
+
+   # รายงานสรุปผลการทดลอง
+
+## ใบงานปฏิบัติการที่ 08-5: ศูนย์ควบคุมเซนเซอร์คู่ IoT แบบเรียลไทม์
+
+## 1. รหัสนักศึกษาและการคำนวณเกจ์
+
+**รหัสนักศึกษา 3 ตัวท้าย: 091**
+
+### เกจ์ซ้าย (Left)
+
+```text
+Left = (91 mod 4) + 1
+     = 3 + 1
+     = 4
+```
+
+**ผลลัพธ์: เกจ์หมายเลข 4 → Liquid Level Tank**
+
+### เกจ์ขวา (Right)
+
+```text
+Right = (⌊91 / 4⌋ mod 4) + 1
+      = (22 mod 4) + 1
+      = 2 + 1
+      = 3
+```
+
+**ผลลัพธ์: เกจ์หมายเลข 3 → Retro 7-Segment**
+
+### ตรวจสอบเกจ์ซ้ำ
+
+```text
+Left = 4
+Right = 3
+
+4 ≠ 3
+```
+
+ดังนั้น **ไม่เกิดเกจ์ซ้ำ**
+
+---
+
+## 2. ภาพหน้าจอ Dashboard
+
+ภาพหน้าจอแสดง Dashboard ที่ทำงานสมบูรณ์ โดยมีเกจ์ 2 ฝั่งและแสดงข้อมูลจาก `/api/telemetry`
+
+![Dashboard Screenshot](./screenshot-dashboard.png)
+
+---
+
+## 3. หลักการทำงานของ JavaScript
+
+JavaScript ใช้ `fetch()` เพื่อรับข้อมูลจาก API `/api/telemetry` แล้วนำข้อมูลไปอัปเดตเกจ์ทั้งสองตัว
+
+```javascript
+async function pollTelemetry() {
+    try {
+        const res = await fetch('/api/telemetry');
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        updateLeftWidget(data.channelA.percentage);
+        updateRightWidget(data.channelB.percentage);
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+setInterval(pollTelemetry, 50);
+pollTelemetry();
+```
+
+### การทำงาน
+
+1. `fetch()` ส่งคำขอไปยัง `/api/telemetry`
+2. `res.json()` แปลงข้อมูลที่ได้รับเป็น JSON
+3. นำค่า `channelA` และ `channelB` ไปอัปเดตเกจ์
+4. `setInterval()` เรียกฟังก์ชันทุก **50 มิลลิวินาที**
+5. ทำให้ Dashboard แสดงข้อมูลได้แบบ **Real-time**
+
+### การอัปเดตเกจ์
+
+* **เกจ์ซ้าย:** นำค่าเปอร์เซ็นต์ไปคำนวณเป็นมุม แล้วหมุนเข็ม SVG
+* **เกจ์ขวา:** นำค่าเปอร์เซ็นต์มาแสดงเป็นตัวเลขแบบ **7-Segment**
+* JavaScript ใช้ SVG และ DOM ในการเปลี่ยนค่าบนหน้าจอโดยไม่ต้องโหลดหน้าเว็บใหม่
+
+---
+
+## สรุปการทำงาน
+
+```text
+ESP32
+  ↓
+Serial
+  ↓
+C# Kestrel Server
+  ↓
+/api/telemetry
+  ↓
+JavaScript fetch()
+  ↓
+Dashboard
+  ↓
+แสดงผลเกจ์แบบ Real-time
+```
+
+**สรุป:** ระบบรับข้อมูลจาก ESP32 และข้อมูลจำลอง ส่งมายัง Kestrel Server จากนั้น JavaScript จะดึงข้อมูลทุก 50 ms และนำไปแสดงผลบน Dashboard ผ่านเกจ์ทั้งสองตัว
+
 
 ### เกณฑ์การให้คะแนน (Rubric = 100 คะแนน)
 * **ความถูกต้องตามโจทย์เฉพาะบุคคล (30 คะแนน)** เกจ์ซ้ายและขวาตรงตามรหัสนักศึกษาที่คำนวณได้
 * **การเชื่อมต่อและตอบสนองแบบเรียลไทม์ (30 คะแนน)** เกจ์ซ้ายตอบสนองต่อการหมุน Potentiometer ทันทีโดยไม่มีอาการกระตุกหรือดีเลย์
 * **การจัดการข้อมูล 2 ช่องสัญญาณ (20 คะแนน)** ส่งและรับ JSON แบบ Dual-Channel (`channelA`, `channelB`) ถูกต้องสมบูรณ์
 * **ความสวยงามและ Responsive Design (20 คะแนน)** จัดวางองค์ประกอบเป็นสัดส่วน มีแสงเรืองนีออน (Glow Effect) และปรับขนาดตามหน้าจอได้อย่างสวยงาม
+
+
