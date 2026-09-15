@@ -411,7 +411,7 @@ Right = 3
 
 ภาพหน้าจอแสดง Dashboard ที่ทำงานสมบูรณ์ โดยมีเกจ์ 2 ฝั่งและแสดงข้อมูลจาก `/api/telemetry`
 
-![Dashboard Screenshot](./screenshot-dashboard.png)
+![alt text](image-31.png)
 
 ---
 
