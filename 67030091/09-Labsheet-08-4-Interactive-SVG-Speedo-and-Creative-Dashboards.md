@@ -661,6 +661,7 @@ setInterval(pollTelemetry, 150);
    - ตัวอย่างหน้าจอ
    ![alt text](image-15.png)
    - Link Vidio
+   https://youtube.com/shorts/EAUIo1pq5Oo?feature=share
 
 2. แนบภาพหน้าจอซอร์สโค้ดและรายงานการทดลอง
 ![alt text](image-16.png)
